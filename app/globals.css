@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #f8fafc;
+  --color-accent: #00e5ff;
+  --color-background: #0b132b;
+  --color-border: #1e2d5c;
+  --color-muted: #9ca3af;
+  --color-card: #131f43;
+  --color-alert: #f59e0b;
+  --color-pending: #6b7280;
+  --radius-card: 0.75rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--color-background);
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(0, 229, 255, 0.12), transparent 28rem),
+    radial-gradient(circle at top right, rgba(92, 45, 145, 0.14), transparent 24rem),
+    var(--color-background);
+  color: #e5e7eb;
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+::selection {
+  background: rgba(0, 229, 255, 0.28);
+}
+
+@layer base {
+  input,
+  select,
+  textarea {
+    @apply w-full rounded-xl border border-[#1E2D5C] bg-[#0B132B] px-3.5 py-3 text-sm text-gray-100 shadow-[0_1px_2px_rgba(0,0,0,0.22)] outline-none transition duration-200 placeholder:text-gray-500 focus:border-[#00E5FF] focus:ring-4 focus:ring-[#00E5FF]/15;
+  }
+
+  label {
+    @apply text-xs font-medium tracking-wide text-gray-400;
+  }
+}
+
+@layer components {
+  .surface-card {
+    @apply rounded-xl border border-[#1E2D5C] bg-[#131F43] shadow-[0_18px_60px_rgba(0,0,0,0.24)];
+  }
+}
