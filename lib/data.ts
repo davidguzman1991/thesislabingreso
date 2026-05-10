@@ -77,6 +77,7 @@ type DbService = {
 type DbInstallment = {
   numero_cuota: number;
   monto: number | string;
+  monto_original: number | string | null;
   fecha_vencimiento: string;
   estado: Installment["estado"];
 };
@@ -290,6 +291,7 @@ function mapInstallments(row: DbClient): Installment[] {
     .map((installment) => ({
       numero: installment.numero_cuota,
       monto: Number(installment.monto),
+      monto_original: Number(installment.monto_original ?? installment.monto),
       fecha_vencimiento: installment.fecha_vencimiento,
       estado: installment.estado
     }));

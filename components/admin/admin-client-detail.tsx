@@ -43,6 +43,10 @@ const installmentStatusLabels = {
 } as const;
 
 export function AdminClientDetail({ data }: { data: ClientPortalData }) {
+  const totalPaid = Math.max(
+    data.service.precio_total - data.service.saldo_pendiente,
+    0
+  );
   const technicalPayload = {
     client: data.client,
     project: data.project,
@@ -258,6 +262,10 @@ export function AdminClientDetail({ data }: { data: ClientPortalData }) {
                     value={money.format(data.service.valor_entrada)}
                   />
                   <DetailMetric
+                    label="Total pagado"
+                    value={money.format(totalPaid)}
+                  />
+                  <DetailMetric
                     label="Saldo pendiente"
                     value={money.format(data.service.saldo_pendiente)}
                   />
@@ -302,6 +310,12 @@ export function AdminClientDetail({ data }: { data: ClientPortalData }) {
                           <p className="text-sm font-semibold text-white">
                             {money.format(installment.monto)}
                           </p>
+                          {typeof installment.monto_original === "number" &&
+                          installment.monto_original !== installment.monto ? (
+                            <p className="text-xs text-gray-300">
+                              Recalculada desde {money.format(installment.monto_original)}
+                            </p>
+                          ) : null}
                           <p className="text-xs uppercase tracking-[0.14em] text-gray-300">
                             {installmentStatusLabels[installment.estado]}
                           </p>

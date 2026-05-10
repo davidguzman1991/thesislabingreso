@@ -168,12 +168,20 @@ create table if not exists public.installments (
   client_id uuid not null references public.clients(id) on delete cascade,
   numero_cuota integer not null check (numero_cuota > 0),
   monto numeric not null default 0 check (monto >= 0),
+  monto_original numeric not null default 0 check (monto_original >= 0),
   fecha_vencimiento date not null,
   estado text not null default 'pendiente'
     check (estado in ('pendiente', 'pagado', 'vencido')),
   created_at timestamp with time zone not null default now(),
   unique (client_id, numero_cuota)
 );
+
+alter table public.installments
+  add column if not exists monto_original numeric not null default 0;
+
+update public.installments
+set monto_original = monto
+where monto_original = 0;
 
 create table if not exists public.payments (
   id uuid primary key default gen_random_uuid(),
@@ -419,12 +427,14 @@ begin
       client_id,
       numero_cuota,
       monto,
+      monto_original,
       fecha_vencimiento,
       estado
     )
     values (
       created_client.id,
       (installment->>'numero_cuota')::integer,
+      (installment->>'monto')::numeric,
       (installment->>'monto')::numeric,
       (installment->>'fecha_vencimiento')::date,
       coalesce(installment->>'estado', 'pendiente')
@@ -1016,6 +1026,74 @@ begin
 end;
 $$;
 
+create or replace function public.recalculate_client_installments(
+  p_client_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  service_record public.services;
+  installment_record public.installments;
+  remaining_paid numeric;
+  next_pending_amount numeric;
+begin
+  select *
+  into service_record
+  from public.services
+  where client_id = p_client_id
+  order by created_at desc
+  limit 1;
+
+  if service_record.id is null then
+    return;
+  end if;
+
+  remaining_paid := greatest(service_record.precio_total - service_record.saldo_pendiente, 0);
+
+  for installment_record in
+    select *
+    from public.installments
+    where client_id = p_client_id
+    order by numero_cuota
+  loop
+    if remaining_paid >= installment_record.monto_original then
+      update public.installments
+      set
+        monto = installment_record.monto_original,
+        estado = 'pagado'
+      where id = installment_record.id;
+
+      remaining_paid := remaining_paid - installment_record.monto_original;
+    elsif remaining_paid > 0 then
+      next_pending_amount := greatest(installment_record.monto_original - remaining_paid, 0);
+
+      update public.installments
+      set
+        monto = next_pending_amount,
+        estado = case
+          when next_pending_amount = 0 then 'pagado'
+          else 'pendiente'
+        end
+      where id = installment_record.id;
+
+      remaining_paid := 0;
+    else
+      update public.installments
+      set
+        monto = installment_record.monto_original,
+        estado = case
+          when estado = 'vencido' then 'vencido'
+          else 'pendiente'
+        end
+      where id = installment_record.id;
+    end if;
+  end loop;
+end;
+$$;
+
 create or replace function public.admin_validate_payment(
   p_codigo text,
   p_payment_id uuid,
@@ -1082,17 +1160,7 @@ begin
     set saldo_pendiente = greatest(saldo_pendiente - updated_payment.monto, 0)
     where client_id = target_client.id;
 
-    update public.installments
-    set estado = 'pagado'
-    where id = (
-      select id
-      from public.installments
-      where client_id = target_client.id
-        and estado = 'pendiente'
-        and monto = updated_payment.monto
-      order by numero_cuota
-      limit 1
-    );
+    perform public.recalculate_client_installments(target_client.id);
 
     insert into public.activity_logs (
       client_id,
@@ -1140,6 +1208,17 @@ begin
 end;
 $$;
 
+do $$
+declare
+  client_record record;
+begin
+  for client_record in select id from public.clients
+  loop
+    perform public.recalculate_client_installments(client_record.id);
+  end loop;
+end;
+$$;
+
 revoke execute on function public.create_admin_client(jsonb) from public, anon, authenticated;
 revoke execute on function public.complete_client_registration(text, text, jsonb) from public, anon, authenticated;
 revoke execute on function public.report_client_payment(text, text, jsonb) from public, anon, authenticated;
@@ -1147,6 +1226,7 @@ revoke execute on function public.admin_update_client_drive(text, jsonb) from pu
 revoke execute on function public.admin_update_project_progress(text, jsonb) from public, anon, authenticated;
 revoke execute on function public.admin_update_client_lifecycle(text, text) from public, anon, authenticated;
 revoke execute on function public.client_confirm_drive_access(text, text) from public, anon, authenticated;
+revoke execute on function public.recalculate_client_installments(uuid) from public, anon, authenticated;
 revoke execute on function public.create_activity_log(text, text, text, text, jsonb) from public, anon, authenticated;
 revoke execute on function public.admin_validate_payment(text, uuid, text, text, text) from public, anon, authenticated;
 
@@ -1157,5 +1237,6 @@ grant execute on function public.admin_update_client_drive(text, jsonb) to servi
 grant execute on function public.admin_update_project_progress(text, jsonb) to service_role;
 grant execute on function public.admin_update_client_lifecycle(text, text) to service_role;
 grant execute on function public.client_confirm_drive_access(text, text) to service_role;
+grant execute on function public.recalculate_client_installments(uuid) to service_role;
 grant execute on function public.create_activity_log(text, text, text, text, jsonb) to service_role;
 grant execute on function public.admin_validate_payment(text, uuid, text, text, text) to service_role;

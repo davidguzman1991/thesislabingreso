@@ -20,6 +20,7 @@ export function FinancialSnapshot({
   const nextInstallment = service.fechas_pago.find(
     (installment) => installment.estado === "pendiente"
   );
+  const totalPaid = Math.max(service.precio_total - service.saldo_pendiente, 0);
 
   return (
     <Card>
@@ -52,7 +53,8 @@ export function FinancialSnapshot({
         <div className="grid gap-3 sm:grid-cols-2">
           <Metric label="Plan contratado" value={service.plan} />
           <Metric label="Precio total" value={money.format(service.precio_total)} />
-          <Metric label="Entrada pagada" value={money.format(service.valor_entrada)} />
+          <Metric label="Entrada inicial" value={money.format(service.valor_entrada)} />
+          <Metric label="Total pagado" value={money.format(totalPaid)} />
           <Metric label="Saldo pendiente" value={money.format(service.saldo_pendiente)} strong />
           <Metric
             label="Próxima cuota"

@@ -93,6 +93,7 @@ export type Project = {
 export type Installment = {
   numero: number;
   monto: number;
+  monto_original?: number;
   fecha_vencimiento: string;
   estado: "pendiente" | "pagado" | "vencido";
 };
