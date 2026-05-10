@@ -62,7 +62,8 @@ export async function createAdminClientAction(
 
   return {
     client: portalData.client,
-    service: portalData.service
+    service: portalData.service,
+    payments: portalData.payments
   };
 }
 

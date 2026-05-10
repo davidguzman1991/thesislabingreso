@@ -107,46 +107,58 @@ export function AdminClientPanel({
   }, [draft.valorEntrada]);
 
   const metrics = useMemo(() => {
-    const totalSold = records.reduce(
+    const activeRecords = records.filter((record) =>
+      ["activo", "en_pausa"].includes(record.client.estado_cliente)
+    );
+    const totalContracted = activeRecords.reduce(
       (sum, record) => sum + record.service.precio_total,
       0
     );
-    const totalCollected = records.reduce(
-      (sum, record) => sum + record.service.valor_entrada,
+    const totalValidated = activeRecords.reduce(
+      (sum, record) =>
+        sum +
+        Math.max(record.service.precio_total - record.service.saldo_pendiente, 0),
       0
     );
-    const pendingBalance = records.reduce(
+    const pendingBalance = activeRecords.reduce(
       (sum, record) => sum + record.service.saldo_pendiente,
       0
     );
-    const pendingForms = records.filter(
+    const pendingForms = activeRecords.filter(
       (record) => record.client.estado_formulario === "pendiente"
     ).length;
+    const pendingPayments = activeRecords.reduce(
+      (sum, record) =>
+        sum +
+        record.payments.filter((payment) => payment.estado === "reportado")
+          .length,
+      0
+    );
 
     return [
       {
-        label: "Total vendido",
-        value: money.format(totalSold),
+        label: "Cartera contratada activa",
+        value: money.format(totalContracted),
         icon: DollarSign
       },
       {
-        label: "Total cobrado",
-        value: money.format(totalCollected),
+        label: "Pagos validados",
+        value: money.format(totalValidated),
         icon: CreditCard
       },
       {
-        label: "Saldo pendiente",
+        label: "Cartera pendiente",
         value: money.format(pendingBalance),
         icon: BadgeDollarSign
       },
       {
-        label: "Clientes activos",
-        value: String(records.length),
+        label: "Proyectos activos",
+        value: String(activeRecords.length),
         icon: Users
       },
       {
         label: "Pagos por validar",
-        value: "1",
+        value: String(pendingPayments),
         icon: ClipboardCheck
       },
       {
@@ -156,6 +168,11 @@ export function AdminClientPanel({
       }
     ];
   }, [records]);
+
+  const activeRecords = records.filter((record) =>
+    ["activo", "en_pausa"].includes(record.client.estado_cliente)
+  );
+  const archivedRecordsCount = records.length - activeRecords.length;
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -450,21 +467,31 @@ export function AdminClientPanel({
               <div>
                 <p className="text-sm font-medium text-[#00E5FF]">Clientes creados</p>
                 <h2 className="mt-1 text-2xl font-semibold text-white">
-                  Registro operativo
+                  Cartera operativa activa
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-gray-300">
-                  Lista de clientes guardados en Supabase. Cada registro conserva código,
-                  token y estado del formulario.
+                  Lista de clientes activos o en pausa. Los proyectos cerrados y
+                  archivados se conservan en Supabase, pero no ocupan espacio operativo.
                 </p>
               </div>
               <div className="inline-flex items-center gap-2 rounded-full border border-[#1E2D5C] bg-[#131F43] px-3 py-2 text-sm text-gray-300">
                 <Layers3 className="size-4 text-[#00E5FF]" />
-                {records.length} clientes visibles
+                {activeRecords.length} activos
               </div>
             </div>
+            {archivedRecordsCount > 0 ? (
+              <p className="mt-3 text-sm text-gray-400">
+                {archivedRecordsCount} proyecto(s) cerrado(s) o archivado(s) fuera de esta vista.
+              </p>
+            ) : null}
           </CardHeader>
           <CardContent className="space-y-4">
-            {records.map((record) => (
+            {activeRecords.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-[#1E2D5C] bg-[#131F43] p-6 text-center text-sm text-gray-300">
+                No hay clientes activos en este momento.
+              </div>
+            ) : null}
+            {activeRecords.map((record) => (
               <div
                 key={`${record.client.codigo}-${record.client.token}`}
                 className="rounded-xl border border-[#1E2D5C] bg-[#131F43] p-4"

@@ -202,7 +202,8 @@ export async function fetchClientPortalData(
 function mapAdminRecord(row: DbClient): AdminClientRecord {
   return {
     client: mapClient(row),
-    service: mapService(row)
+    service: mapService(row),
+    payments: mapPayments(row)
   };
 }
 

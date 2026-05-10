@@ -185,4 +185,5 @@ export type RegistrationFormData = {
 export type AdminClientRecord = {
   client: Client;
   service: ServiceContract;
+  payments: Payment[];
 };
