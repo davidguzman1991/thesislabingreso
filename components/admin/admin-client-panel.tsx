@@ -481,7 +481,10 @@ export function AdminClientPanel({
             </div>
             {archivedRecordsCount > 0 ? (
               <p className="mt-3 text-sm text-gray-400">
-                {archivedRecordsCount} proyecto(s) cerrado(s) o archivado(s) fuera de esta vista.
+                {archivedRecordsCount} proyecto(s) cerrado(s) o archivado(s) fuera de esta vista.{" "}
+                <Link href="/admin/archivo" className="font-medium text-[#00E5FF] hover:text-white">
+                  Ver archivo
+                </Link>
               </p>
             ) : null}
           </CardHeader>

@@ -850,6 +850,45 @@ begin
 end;
 $$;
 
+create or replace function public.admin_delete_archived_client(
+  p_codigo text,
+  p_confirm_codigo text
+)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_client public.clients;
+begin
+  if p_codigo is null
+    or p_confirm_codigo is null
+    or p_codigo <> p_confirm_codigo then
+    raise exception 'delete_confirmation_mismatch';
+  end if;
+
+  select *
+  into target_client
+  from public.clients
+  where codigo = p_codigo
+  for update;
+
+  if target_client.id is null then
+    raise exception 'client_not_found';
+  end if;
+
+  if target_client.estado_cliente not in ('cerrado', 'archivado') then
+    raise exception 'client_must_be_closed_or_archived';
+  end if;
+
+  delete from public.clients
+  where id = target_client.id;
+
+  return target_client.codigo;
+end;
+$$;
+
 create or replace function public.report_client_payment(
   p_codigo text,
   p_token text,
@@ -1225,6 +1264,7 @@ revoke execute on function public.report_client_payment(text, text, jsonb) from 
 revoke execute on function public.admin_update_client_drive(text, jsonb) from public, anon, authenticated;
 revoke execute on function public.admin_update_project_progress(text, jsonb) from public, anon, authenticated;
 revoke execute on function public.admin_update_client_lifecycle(text, text) from public, anon, authenticated;
+revoke execute on function public.admin_delete_archived_client(text, text) from public, anon, authenticated;
 revoke execute on function public.client_confirm_drive_access(text, text) from public, anon, authenticated;
 revoke execute on function public.recalculate_client_installments(uuid) from public, anon, authenticated;
 revoke execute on function public.create_activity_log(text, text, text, text, jsonb) from public, anon, authenticated;
@@ -1236,6 +1276,7 @@ grant execute on function public.report_client_payment(text, text, jsonb) to ser
 grant execute on function public.admin_update_client_drive(text, jsonb) to service_role;
 grant execute on function public.admin_update_project_progress(text, jsonb) to service_role;
 grant execute on function public.admin_update_client_lifecycle(text, text) to service_role;
+grant execute on function public.admin_delete_archived_client(text, text) to service_role;
 grant execute on function public.client_confirm_drive_access(text, text) to service_role;
 grant execute on function public.recalculate_client_installments(uuid) to service_role;
 grant execute on function public.create_activity_log(text, text, text, text, jsonb) to service_role;

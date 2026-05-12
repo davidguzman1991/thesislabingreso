@@ -235,6 +235,47 @@ export async function updateClientLifecycleAction(input: {
   }
 }
 
+export async function deleteArchivedClientAction(input: {
+  codigo: string;
+  confirmation: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const supabase = getSupabaseAdmin();
+
+    if (!supabase) {
+      return { ok: false, error: "Supabase no está configurado en el servidor." };
+    }
+
+    const { error } = await supabase.rpc("admin_delete_archived_client", {
+      p_codigo: input.codigo,
+      p_confirm_codigo: input.confirmation
+    });
+
+    if (error) {
+      console.error("deleteArchivedClientAction failed", {
+        codigo: input.codigo,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+
+      return { ok: false, error: "No se pudo eliminar definitivamente el cliente" };
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/archivo");
+    revalidatePath(`/admin/clientes/${input.codigo}`);
+    revalidatePath(`/cliente/${input.codigo}`);
+
+    return { ok: true };
+  } catch (error) {
+    console.error("deleteArchivedClientAction unexpected error", error);
+
+    return { ok: false, error: "No se pudo eliminar definitivamente el cliente" };
+  }
+}
+
 export async function createActivityLog(input: {
   codigo: string;
   eventType: ActivityEventType;

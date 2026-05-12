@@ -142,6 +142,28 @@ export async function fetchAdminClientRecords(): Promise<AdminClientRecord[]> {
   return (data as DbClient[]).map(mapAdminRecord);
 }
 
+export async function fetchArchivedClientRecords(): Promise<AdminClientRecord[]> {
+  noStore();
+
+  const supabase = getSupabaseAdmin();
+
+  if (!supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("clients")
+    .select(baseSelect)
+    .in("estado_cliente", ["cerrado", "archivado"])
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data as DbClient[]).map(mapAdminRecord);
+}
+
 export async function fetchAdminClientDetail(
   codigo: string
 ): Promise<ClientPortalData | null> {
