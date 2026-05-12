@@ -260,7 +260,7 @@ export async function deleteArchivedClientAction(input: {
         code: error.code
       });
 
-      return { ok: false, error: "No se pudo eliminar definitivamente el cliente" };
+      return { ok: false, error: getDeleteArchivedClientError(error) };
     }
 
     revalidatePath("/admin");
@@ -342,4 +342,36 @@ async function validatePayment(input: {
 
 function isDriveStatus(value: unknown): value is DriveStatus {
   return ["pendiente", "compartido", "activo"].includes(String(value));
+}
+
+function getDeleteArchivedClientError(error: {
+  code?: string;
+  message?: string;
+}): string {
+  const message = error.message ?? "";
+
+  if (message.includes("delete_confirmation_mismatch")) {
+    return "El código de confirmación no coincide.";
+  }
+
+  if (message.includes("client_not_found")) {
+    return "El cliente ya no existe o ya fue eliminado.";
+  }
+
+  if (message.includes("client_must_be_closed_or_archived")) {
+    return "Solo se pueden eliminar definitivamente clientes cerrados o archivados.";
+  }
+
+  if (
+    error.code === "PGRST202" ||
+    message.includes("Could not find the function")
+  ) {
+    return "Falta aplicar el SQL actualizado en Supabase para habilitar esta acción.";
+  }
+
+  if (message.includes("violates foreign key constraint")) {
+    return "Supabase bloqueó la eliminación por relaciones antiguas. Aplica el SQL actualizado del RPC.";
+  }
+
+  return "No se pudo eliminar definitivamente el cliente. Revisa los logs de Vercel o Supabase.";
 }

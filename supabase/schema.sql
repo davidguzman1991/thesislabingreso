@@ -882,6 +882,21 @@ begin
     raise exception 'client_must_be_closed_or_archived';
   end if;
 
+  delete from public.activity_logs
+  where client_id = target_client.id;
+
+  delete from public.payments
+  where client_id = target_client.id;
+
+  delete from public.installments
+  where client_id = target_client.id;
+
+  delete from public.projects
+  where client_id = target_client.id;
+
+  delete from public.services
+  where client_id = target_client.id;
+
   delete from public.clients
   where id = target_client.id;
 
